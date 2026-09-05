@@ -28,6 +28,8 @@
   button:active{transform:translateY(1px)}
   button[aria-pressed="true"]{background:rgba(129,140,248,.16);border-color:rgba(129,140,248,.55);color:#fff}
   .meta{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--muted);padding:0 6px;text-transform:uppercase;white-space:nowrap}
+  .src{position:absolute;top:clamp(16px,3.2vw,38px);right:clamp(16px,3.2vw,38px);pointer-events:auto;font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);text-decoration:none;border:1px solid var(--stroke);border-radius:9px;padding:9px 13px;background:var(--panel);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .src:hover{color:var(--text);border-color:rgba(255,255,255,.35)}
   .fallback{position:fixed;inset:0;display:none;place-items:center;text-align:center;padding:24px}
   .fallback.on{display:grid}
   .fallback .card{max-width:44ch}
@@ -40,6 +42,7 @@
 <body>
 <canvas id="c"></canvas>
 <div class="overlay">
+  <a class="src" href="https://github.com/Facetworks/abyss" target="_blank" rel="noopener">Source &#8599;</a>
   <div>
     <div class="eyebrow"><span class="dot"></span>Live raymarched fractal &middot; WebGL2</div>
     <h1>ABYSS</h1>
