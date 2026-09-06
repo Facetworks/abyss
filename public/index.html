@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Abyss — fall into the bulb</title>
 <meta name="description" content="A raymarched Mandelbulb fractal orbiting on your GPU, in the browser. Move to steer the light. WebGL2, no server, no dependencies.">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -14,7 +14,7 @@
     --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
   }
   *{box-sizing:border-box}
-  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;font-family:var(--sans)}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--text);overflow:hidden;font-family:var(--sans);-webkit-tap-highlight-color:transparent}
   #c{position:fixed;inset:0;width:100vw;height:100vh;display:block;touch-action:none;cursor:move}
   .overlay{position:fixed;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:clamp(16px,3.2vw,38px)}
   .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:9px}
@@ -22,7 +22,7 @@
   @keyframes p{0%,100%{opacity:.35}50%{opacity:1}}
   h1{font-size:clamp(38px,8.5vw,120px);font-weight:200;letter-spacing:.13em;margin:10px 0 0;line-height:.98;text-wrap:balance;text-shadow:0 0 40px rgba(129,140,248,.14)}
   .tag{margin:13px 0 0;color:var(--muted);font-size:clamp(13px,1.5vw,16px);max-width:38ch;line-height:1.5}
-  .bar{pointer-events:auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:8px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);width:fit-content;max-width:100%}
+  .bar{pointer-events:auto;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--stroke);border-radius:14px;padding:8px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);width:fit-content;max-width:calc(100vw - 32px);overflow-x:auto}
   button{font:500 13px var(--sans);color:var(--text);background:rgba(255,255,255,.04);border:1px solid var(--stroke);border-radius:9px;padding:9px 13px;cursor:pointer;transition:background .18s,border-color .18s,transform .05s}
   button:hover{background:rgba(255,255,255,.09);border-color:rgba(150,160,220,.3)}
   button:active{transform:translateY(1px)}
@@ -70,7 +70,9 @@
  * marching, tetrahedron normals, cosine-palette shading, hashed stars.
  * The camera orbits on its own; the pointer steers orbit and light. */
 const canvas = document.getElementById('c');
+const MOBILE = matchMedia('(pointer:coarse)').matches || Math.min(innerWidth, innerHeight) < 500 || /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
 const gl = canvas.getContext('webgl2', { antialias: false, depth: false, alpha: false });
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); document.getElementById('fallback').classList.add('on'); });
 if (!gl) {
   document.getElementById('fallback').classList.add('on');
 } else {
@@ -84,6 +86,7 @@ function main() {
     { a: [0.40, 0.25, 0.55], b: [0.45, 0.40, 0.45], c: [1.00, 1.00, 1.00], d: [0.75, 0.35, 0.10] },
   ];
   let pal = 0, paused = false, t0 = 0, simT = 0;
+  const MARCH = MOBILE ? 48 : 90, DEIT = MOBILE ? 6 : 9, RS = MOBILE ? 0.75 : 1;
   let px = 0, py = 0, tx = 0, ty = 0;
 
   const VS = `#version 300 es
@@ -97,7 +100,7 @@ function main() {
   float mbDE(vec3 pos){
     vec3 z = pos;
     float dr = 1.0, r = 0.0;
-    for(int i=0;i<9;i++){
+    for(int i=0;i<${DEIT};i++){
       r = max(length(z), 1e-4);
       if(r > 2.0) break;
       float th = acos(clamp(z.z/r, -1.0, 1.0))*8.0;
@@ -125,7 +128,7 @@ function main() {
 
     float t = 0.0, glow = 0.0, iter = 0.0;
     float hit = -1.0;
-    for(int i=0;i<90;i++){
+    for(int i=0;i<${MARCH};i++){
       vec3 p = ro + rd*t;
       float d = mbDE(p);
       glow = glow*0.93 + exp(-30.0*abs(d))*0.05;
@@ -144,7 +147,7 @@ function main() {
       vec3 ld = normalize(vec3(0.6+uPtr.x*0.5, 0.7, 0.5-uPtr.y*0.4));
       float dif = clamp(dot(n, ld), 0.0, 1.0);
       float spec = pow(clamp(dot(reflect(-ld, n), -rd), 0.0, 1.0), 28.0);
-      float ao = 1.0 - iter/90.0*0.55;
+      float ao = 1.0 - iter/${MARCH}.0*0.55;
       col = pal(0.12 + 0.35*n.y*0.5 + 0.30*n.x*0.5 + hit*0.10);
       col = col*(0.20 + 0.80*dif)*ao + spec*vec3(1.0, 0.96, 0.90)*0.7;
       col += pal(0.55)*glow*0.6;
@@ -179,7 +182,7 @@ function main() {
   const U = (n) => gl.getUniformLocation(pr, n);
 
   function resize() {
-    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    const dpr = Math.min(devicePixelRatio || 1, MOBILE ? 1 : 1.5) * RS;
     canvas.width = Math.floor(innerWidth * dpr);
     canvas.height = Math.floor(innerHeight * dpr);
     gl.viewport(0, 0, canvas.width, canvas.height);
